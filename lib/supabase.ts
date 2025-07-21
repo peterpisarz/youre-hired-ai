@@ -2,6 +2,51 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// JSONB field type definitions
+export interface WorkExperience {
+  company: string
+  position: string
+  startDate: string
+  endDate?: string
+  description: string
+  location?: string
+}
+
+export interface Education {
+  institution: string
+  degree: string
+  field: string
+  startDate: string
+  endDate?: string
+  gpa?: string
+  location?: string
+}
+
+export interface Skill {
+  name: string
+  level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+  category?: string
+}
+
+export interface Certification {
+  name: string
+  issuer: string
+  issueDate: string
+  expiryDate?: string
+  credentialId?: string
+  url?: string
+}
+
+export interface Project {
+  name: string
+  description: string
+  technologies: string[]
+  startDate: string
+  endDate?: string
+  url?: string
+  githubUrl?: string
+}
+
 // Database types (will be generated from Supabase CLI)
 export interface Database {
   public: {
@@ -51,11 +96,11 @@ export interface Database {
           github_url: string | null
           portfolio_url: string | null
           professional_summary: string | null
-          work_experience: any[] // JSONB
-          education: any[] // JSONB
-          skills: any[] // JSONB
-          certifications: any[] // JSONB
-          projects: any[] // JSONB
+          work_experience: WorkExperience[] // JSONB
+          education: Education[] // JSONB
+          skills: Skill[] // JSONB
+          certifications: Certification[] // JSONB
+          projects: Project[] // JSONB
           uploaded_resume_url: string | null
           created_at: string
           updated_at: string
@@ -69,11 +114,11 @@ export interface Database {
           github_url?: string | null
           portfolio_url?: string | null
           professional_summary?: string | null
-          work_experience?: any[]
-          education?: any[]
-          skills?: any[]
-          certifications?: any[]
-          projects?: any[]
+          work_experience?: WorkExperience[]
+          education?: Education[]
+          skills?: Skill[]
+          certifications?: Certification[]
+          projects?: Project[]
           uploaded_resume_url?: string | null
           created_at?: string
           updated_at?: string
@@ -87,11 +132,11 @@ export interface Database {
           github_url?: string | null
           portfolio_url?: string | null
           professional_summary?: string | null
-          work_experience?: any[]
-          education?: any[]
-          skills?: any[]
-          certifications?: any[]
-          projects?: any[]
+          work_experience?: WorkExperience[]
+          education?: Education[]
+          skills?: Skill[]
+          certifications?: Certification[]
+          projects?: Project[]
           uploaded_resume_url?: string | null
           created_at?: string
           updated_at?: string
@@ -248,8 +293,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 })
 
 // Server-side Supabase client for API routes
-export const createServerSupabaseClient = () => {
-  const cookieStore = cookies()
+export const createServerSupabaseClient = async () => {
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(
     supabaseUrl!,
@@ -262,7 +307,7 @@ export const createServerSupabaseClient = () => {
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options })
-          } catch (error) {
+          } catch {
             // The `set` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
             // user sessions.
@@ -271,7 +316,7 @@ export const createServerSupabaseClient = () => {
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
+          } catch {
             // The `delete` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
             // user sessions.
@@ -294,7 +339,7 @@ export const supabaseAdmin = supabaseServiceKey
 
 // Helper function to get user from session
 export async function getCurrentUser() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -323,7 +368,7 @@ export async function getCurrentUser() {
 
 // Helper function to get user profile
 export async function getUserProfile(userId: string) {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   
   try {
     const { data, error } = await supabase
@@ -345,7 +390,7 @@ export async function getUserProfile(userId: string) {
 
 // Helper function to create or update user profile
 export async function upsertUserProfile(userId: string, profileData: Partial<Database['public']['Tables']['user_profiles']['Insert']>) {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   
   try {
     const { data, error } = await supabase
@@ -370,7 +415,7 @@ export async function upsertUserProfile(userId: string, profileData: Partial<Dat
 
 // Helper function to check if user can generate resume
 export async function canUserGenerateResume(userId: string, model: 'gpt-3.5-turbo' | 'gpt-4'): Promise<boolean> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   
   try {
     const { data, error } = await supabase.rpc('can_generate_resume', {
@@ -391,7 +436,7 @@ export async function canUserGenerateResume(userId: string, model: 'gpt-3.5-turb
 
 // Helper function to increment usage after resume generation
 export async function incrementUsage(userId: string, model: 'gpt-3.5-turbo' | 'gpt-4', tokensUsed: number) {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   
   try {
     const { error } = await supabase.rpc('increment_usage', {
